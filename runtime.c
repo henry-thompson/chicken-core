@@ -631,7 +631,7 @@ void parse_argv(C_char *cmds)
          *bptr0, *bptr, *aptr;
   int n = 0;
 
-  C_main_argv = (C_char **)malloc(MAXIMAL_NUMBER_OF_COMMAND_LINE_ARGUMENTS * sizeof(C_char *));
+  C_main_argv = (C_char **)C_malloc(MAXIMAL_NUMBER_OF_COMMAND_LINE_ARGUMENTS * sizeof(C_char *));
 
   if(C_main_argv == NULL)
     panic(C_text("cannot allocate argument-list buffer"));
@@ -648,7 +648,7 @@ void parse_argv(C_char *cmds)
 
     *bptr = '\0';
 
-    aptr = (C_char*) malloc(sizeof(C_char) * (n + 1));
+    aptr = (C_char*) C_malloc(sizeof(C_char) * (n + 1));
     if (!aptr)
       panic(C_text("cannot allocate argument buffer"));
 
@@ -2978,7 +2978,7 @@ C_mutate_slot(C_word *slot, C_word val)
       C_dbg(C_text("debug"), C_text("resizing mutation stack from %uk to %uk ...\n"),
 	    (mssize * sizeof(C_word *)) / 1024, bytes / 1024);
 
-    mutation_stack_bottom = (C_word **)realloc(mutation_stack_bottom, bytes);
+    mutation_stack_bottom = (C_word **)C_realloc(mutation_stack_bottom, bytes);
 
     if(mutation_stack_bottom == NULL)
       panic(C_text("out of memory - cannot re-allocate mutation stack"));
@@ -3104,7 +3104,7 @@ C_regparm C_word C_fcall C_scratch_alloc(C_uword size)
           C_memcpy(p2->data, p->data, C_wordstobytes(n));
         }
       }
-      free(C_scratchspace_start);
+      C_free(C_scratchspace_start);
     }
     C_scratchspace_start = new_scratch_start;
     C_scratchspace_top = new_scratch_top;
@@ -11305,7 +11305,7 @@ void C_ccall C_become(C_word c, C_word *av)
     neu = C_u_i_cdr(x);
 
     if(i == 0) {
-      if((forwarding_table = (C_word *)realloc(forwarding_table, (forwarding_table_size + 1) * 4 * sizeof(C_word))) == NULL)
+      if((forwarding_table = (C_word *)C_realloc(forwarding_table, (forwarding_table_size + 1) * 4 * sizeof(C_word))) == NULL)
 	panic(C_text("out of memory - cannot re-allocate forwarding table"));
 	
       i = forwarding_table_size;

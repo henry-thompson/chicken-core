@@ -133,7 +133,7 @@ static int execute(char **argv)
 int main(int argc, char *argv[]) 
 {
   int i, count, a = 0;
-  char **args = (char **)malloc(sizeof(char *) * argc);
+  char **args = (char **)C_malloc(sizeof(char *) * argc);
   struct stat st, sd;
   int quiet = 0, opts = 1;
 

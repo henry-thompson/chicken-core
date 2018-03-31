@@ -417,7 +417,7 @@ send_event(int event, C_char *loc, C_char *val, C_char *cloc, int cln)
 
     case C_DEBUG_REPLY_GET_GLOBAL:
       str = name_and_length(rw_buffer, &n);
-      ptr = malloc(sizeof(C_header) + n + 1);
+      ptr = C_malloc(sizeof(C_header) + n + 1);
       memcpy(((C_SCHEME_BLOCK*)ptr)->data, str, n + 1);
       ((C_SCHEME_BLOCK *)ptr)->header = C_make_header(C_STRING_TYPE, n);
       x = C_find_symbol((C_word)ptr, NULL);
