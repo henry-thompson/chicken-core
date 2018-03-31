@@ -27,6 +27,10 @@
 
 /* Configuration: */
 
+// For now, just enable Boehm always. We can put this in a config file
+// later.
+#define BOEHM_GC 1
+
 #ifndef ___CHICKEN
 #define ___CHICKEN
 
@@ -116,6 +120,11 @@
 # define _WIN32_WINNT 0x0600
 #endif
 
+#ifdef BOEHM_GC
+#include <gc/gc.h>
+void GC_FREE_DUMMY(void*);
+void* GC_CALLOC(size_t n, size_t len);
+#endif
 
 /* Headers */
 
@@ -876,11 +885,20 @@ typedef void (C_ccall *C_proc)(C_word, C_word *) C_noret;
 # define C_memset                   memset
 # define C_memmove                  memmove
 # define C_strncasecmp              strncasecmp
+
+#ifdef BOEHM_GC
+# define C_malloc                   GC_MALLOC
+# define C_calloc                   GC_CALLOC
+# define C_free                     GC_FREE_DUMMY
+# define C_realloc                  GC_REALLOC
+#else
 # define C_malloc                   malloc
 # define C_calloc                   calloc
 # define C_free                     free
-# define C_strchr                   strchr
 # define C_realloc                  realloc
+#endif
+
+# define C_strchr                   strchr
 # define C_strdup                   strdup
 # define C_strtol                   strtol
 # define C_strtoll                  strtoll
@@ -1565,11 +1583,20 @@ typedef void (C_ccall *C_proc)(C_word, C_word *) C_noret;
 # define C_set_main_exe(fname)
 #endif
 
+#ifdef BOEHM_GC
+#define BOEHM_INIT \
+GC_INIT(); \
+GC_enable_incremental();
+#else
+#define BOEHM_INIT_GC
+#endif
+
 #if !defined(C_EMBEDDED) && !defined(C_SHARED)
 # if defined(C_GUI) && defined(_WIN32)
 #  define C_main_entry_point            \
   int WINAPI WinMain(HINSTANCE me, HINSTANCE you, LPSTR cmdline, int show) \
   { \
+    BOEHM_INIT \
     C_gui_mode = 1; \
     C_set_main_exe(argv[0]);				\
     C_private_repository();				\
@@ -1579,6 +1606,7 @@ typedef void (C_ccall *C_proc)(C_word, C_word *) C_noret;
 #  define C_main_entry_point            \
   int main(int argc, char *argv[]) \
   { \
+    BOEHM_INIT \
     C_set_gui_mode; \
     C_set_main_exe(argv[0]);				\
     C_private_repository();				\
@@ -1586,7 +1614,12 @@ typedef void (C_ccall *C_proc)(C_word, C_word *) C_noret;
   }
 # endif
 #else
-# define C_main_entry_point
+# define C_main_entry_point    \
+  int main(int argc, char *argv[]) \
+  { \
+    BOEHM_INIT \
+    return CHICKEN_main(argc, argv, (void*)C_toplevel); \
+  }
 #endif
 
 #define C_alloc_flonum                  C_word *___tmpflonum = C_alloc(WORDS_PER_FLONUM)

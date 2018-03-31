@@ -63,6 +63,9 @@ include $(SRCDIR)/defaults.make
 #C_COMPILER_OPTIONS += -I/usr/pkg/lib
 #LINKER_OPTIONS += -L/usr/pkg/lib -Wl,-R/usr/pkg/lib
 
+# TODO: Only enable this if we actually specified Boehm
+LINKER_OPTIONS += -lgc
+
 chicken-config.h: chicken-defaults.h
 	echo "/* GENERATED */" >$@
 	echo "#define HAVE_DIRENT_H 1" >>$@

@@ -68,6 +68,16 @@
 #  include <poll.h>
 #endif
 
+#ifdef BOEHM_GC
+void GC_FREE_DUMMY(void *ptr) {
+   return;
+}
+
+void *GC_CALLOC(size_t n, size_t len) {
+   return GC_MALLOC(n * len);
+}
+#endif
+
 #if !defined(C_NONUNIX)
 
 # include <sys/time.h>
@@ -216,7 +226,7 @@ static C_TLS int timezone;
 
 #define GC_MINOR           0
 #define GC_MAJOR           1
-#define GC_REALLOC         2
+#define GC_CHICKEN_REALLOC         2
 
 
 /* Macros: */
@@ -3315,7 +3325,7 @@ C_regparm void C_fcall C_reclaim(void *trampoline, C_word c)
   cell.val = "GC_MINOR";
   C_debugger(&cell, 0, NULL);
 
-  /* Note: the mode argument will always be GC_MINOR or GC_REALLOC. */
+  /* Note: the mode argument will always be GC_MINOR or GC_CHICKEN_REALLOC. */
   if(C_pre_gc_hook != NULL) C_pre_gc_hook(GC_MINOR);
 
   finalizers_checked = 0;
@@ -3338,8 +3348,8 @@ C_regparm void C_fcall C_reclaim(void *trampoline, C_word c)
 
     tgc = C_cpu_milliseconds();
 
-    if(gc_mode == GC_REALLOC) {
-      cell.val = "GC_REALLOC";
+    if(gc_mode == GC_CHICKEN_REALLOC) {
+      cell.val = "GC_CHICKEN_REALLOC";
       C_debugger(&cell, 0, NULL);
       C_rereclaim2(percentage(heap_size, C_heap_growth), 0);
       gc_mode = GC_MAJOR;
@@ -3721,7 +3731,7 @@ C_regparm void C_fcall really_mark(C_word *x)
     bytes = (h & C_BYTEBLOCK_BIT) ? n : n * sizeof(C_word);
 
     if(((C_byte *)p2 + bytes + sizeof(C_word)) > tospace_limit) {
-      /* Detect impossibilities before GC_REALLOC to preserve state: */
+      /* Detect impossibilities before GC_CHICKEN_REALLOC to preserve state: */
       if (C_in_stackp((C_word)p) && bytes > stack_size)
         panic(C_text("Detected corrupted data in stack"));
       if (C_in_heapp((C_word)p) && bytes > (heap_size / 2))
@@ -3729,7 +3739,7 @@ C_regparm void C_fcall really_mark(C_word *x)
       if(C_heap_size_is_fixed)
 	panic(C_text("out of memory - heap full"));
       
-      gc_mode = GC_REALLOC;
+      gc_mode = GC_CHICKEN_REALLOC;
 #ifdef HAVE_SIGSETJMP
       C_siglongjmp(gc_restart, 1);
 #else
@@ -3774,7 +3784,7 @@ C_regparm void C_fcall C_rereclaim2(C_uword size, int relative_resize)
   C_byte *new_heapspace;
   size_t  new_heapspace_size;
 
-  if(C_pre_gc_hook != NULL) C_pre_gc_hook(GC_REALLOC);
+  if(C_pre_gc_hook != NULL) C_pre_gc_hook(GC_CHICKEN_REALLOC);
 
   /*
    * Normally, size is "absolute": it indicates the desired size of
@@ -3893,7 +3903,7 @@ C_regparm void C_fcall C_rereclaim2(C_uword size, int relative_resize)
     remark(&tinfo->thread);
   }
 
-  update_locative_table(GC_REALLOC);
+  update_locative_table(GC_CHICKEN_REALLOC);
 
   /* Mark nested values in already moved (marked) blocks in breadth-first manner: */
   while(heap_scan_top < new_tospace_top) {
@@ -3920,7 +3930,7 @@ C_regparm void C_fcall C_rereclaim2(C_uword size, int relative_resize)
     heap_scan_top = (C_byte *)bp + C_align(bytes) + sizeof(C_word);
   }
 
-  update_symbol_tables(GC_REALLOC);
+  update_symbol_tables(GC_CHICKEN_REALLOC);
 
   heap_free (heapspace1, heapspace1_size);
   heap_free (heapspace2, heapspace2_size);
@@ -3947,7 +3957,7 @@ C_regparm void C_fcall C_rereclaim2(C_uword size, int relative_resize)
 	  (C_word)tospace_start, (C_word)tospace_limit);
   }
 
-  if(C_post_gc_hook != NULL) C_post_gc_hook(GC_REALLOC, 0);
+  if(C_post_gc_hook != NULL) C_post_gc_hook(GC_CHICKEN_REALLOC, 0);
 }
 
 
@@ -4125,7 +4135,7 @@ C_regparm void C_fcall update_locative_table(int mode)
         
         break;
 
-      case GC_REALLOC:
+      case GC_CHICKEN_REALLOC:
         ptr = C_block_item(loc, 0); /* just update ptr's pointed-at objects */
         offset = C_unfix(C_block_item(loc, 1));
         obj = ptr - offset;
@@ -4139,7 +4149,7 @@ C_regparm void C_fcall update_locative_table(int mode)
   if(gc_report_flag && invalidated > 0)
     C_dbg(C_text("GC"), C_text("locative-table entries reclaimed: %d\n"), invalidated);
 
-  if(mode != GC_REALLOC) locative_table_count = hi;
+  if(mode != GC_CHICKEN_REALLOC) locative_table_count = hi;
 }
 
 static C_regparm void fixup_symbol_forwards(C_word sym)
@@ -4195,7 +4205,7 @@ C_regparm void C_fcall update_symbol_tables(int mode)
 
           str_perm = !C_in_stackp(str) && !C_in_heapp(str) &&
                   !C_in_scratchspacep(str) &&
-                  (mode == GC_REALLOC ? !C_in_new_heapp(str) : 1);
+                  (mode == GC_CHICKEN_REALLOC ? !C_in_new_heapp(str) : 1);
 
 	  if ((C_persistable_symbol(sym) || str_perm) &&
               (C_block_header(bucket) == C_WEAK_PAIR_TAG)) {
@@ -4212,7 +4222,7 @@ C_regparm void C_fcall update_symbol_tables(int mode)
 #endif
 
 	/* If the symbol is unreferenced, drop it: */
-	if(mode == GC_REALLOC ?
+	if(mode == GC_CHICKEN_REALLOC ?
            !C_in_new_heapp(sym) :
            !C_in_fromspacep(sym)) {
 
@@ -4551,7 +4561,7 @@ C_word C_resize_trace_buffer(C_word size) {
   int old_size = C_trace_buffer_size, old_profiling = profiling;
   assert(trace_buffer);
   profiling = 0;
-  free(trace_buffer);
+  C_free(trace_buffer);
   trace_buffer = NULL;
   C_trace_buffer_size = C_unfix(size);
   C_clear_trace_buffer();
