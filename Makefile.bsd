@@ -31,7 +31,7 @@ SRCDIR ?= ./
 ARCH ?= $(shell sh $(SRCDIR)/config-arch.sh)
 
 # options
-C_COMPILER_OPTIONS ?= -fno-strict-aliasing -fwrapv -DHAVE_CHICKEN_CONFIG_H
+C_COMPILER_OPTIONS ?= -lgc -fno-strict-aliasing -fwrapv -DHAVE_CHICKEN_CONFIG_H
 
 ifdef DEBUGBUILD
 C_COMPILER_OPTIMIZATION_OPTIONS ?= -g -Wall -Wno-unused
